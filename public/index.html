@@ -65,6 +65,7 @@
                               radial-gradient(circle at bottom left, #0f172a 0%, transparent 40%);
         }
     </style>
+    <script src="https://unpkg.com/lucide@latest"></script>
 </head>
 <body>
     <header class="app-header glass-header flex justify-between items-center px-6 py-4 z-10 relative shadow-md">
@@ -72,13 +73,19 @@
         <div class="header-right flex items-center gap-4">
             <div id="connection-status" class="status-badge px-3 py-1 rounded-full text-xs font-semibold uppercase tracking-wider bg-red-500/20 text-red-400">Offline</div>
             <div id="presence-avatars" class="presence-container flex -space-x-2"></div>
-            <button id="add-column-btn" class="btn primary px-4 py-2 rounded-lg font-medium text-white bg-indigo-600 hover:bg-indigo-500 transition-colors shadow-lg shadow-indigo-500/20 active:scale-95">Add Column</button>
+            <button id="add-column-btn" class="btn primary px-4 py-2 rounded-lg font-medium text-white bg-indigo-600 hover:bg-indigo-500 transition-colors shadow-lg shadow-indigo-500/20 active:scale-95 flex items-center gap-2">
+                <i data-lucide="plus" class="w-4 h-4"></i> Add Column
+            </button>
         </div>
     </header>
     
     <main class="board-container flex-1 overflow-x-auto overflow-y-hidden p-6 relative z-0">
         <div id="board" class="board flex gap-6 h-full items-start">
-            <!-- Columns go here -->
+            <div id="skeleton-loader" class="flex gap-6 w-full animate-pulse">
+                <div class="glass-panel rounded-xl w-80 h-96"></div>
+                <div class="glass-panel rounded-xl w-80 h-64"></div>
+                <div class="glass-panel rounded-xl w-80 h-80"></div>
+            </div>
         </div>
     </main>
 
@@ -87,7 +94,9 @@
         <div class="column glass-panel rounded-xl w-80 min-w-[20rem] max-h-full flex flex-col shadow-xl" data-id="">
             <div class="column-header p-4 flex justify-between items-center border-b border-white/5 cursor-grab active:cursor-grabbing group">
                 <input class="column-title bg-transparent border-none text-slate-100 text-base font-semibold outline-none w-full placeholder-slate-400 focus:ring-0" type="text" value="New Column">
-                <button class="add-card-btn text-2xl text-slate-400 hover:text-indigo-400 transition-colors leading-none opacity-0 group-hover:opacity-100 focus:opacity-100">+</button>
+                <button class="add-card-btn text-slate-400 hover:text-indigo-400 transition-colors opacity-0 group-hover:opacity-100 focus:opacity-100 flex items-center justify-center p-1 rounded hover:bg-white/5">
+                    <i data-lucide="plus" class="w-5 h-5"></i>
+                </button>
             </div>
             <div class="card-list p-3 overflow-y-auto flex-1 min-h-[50px] space-y-3"></div>
         </div>
@@ -104,7 +113,7 @@
         </div>
     </template>
 
-    <div id="toast-container" class="fixed bottom-6 right-6 flex flex-col gap-2 z-50"></div>
+    <div id="toast-container" class="fixed bottom-4 right-4 flex flex-col gap-2 z-[9999]"></div>
 
     <script src="db.js"></script>
     <script src="sync.js"></script>

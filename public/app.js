@@ -12,6 +12,8 @@ class App {
     }
 
     async init() {
+        // Simulated load state as requested
+        await new Promise(r => setTimeout(r, 1500));
         await window.sync.init();
         await this.render();
     }
@@ -20,15 +22,30 @@ class App {
         return Math.random().toString(36).substring(2, 15);
     }
 
-    showToast(message) {
+    showToast(message, type = 'success') {
         const toast = document.createElement('div');
-        toast.className = 'toast bg-slate-800/90 backdrop-blur border border-white/10 px-4 py-3 rounded-lg text-sm shadow-xl transition-all duration-300 translate-x-0';
-        toast.textContent = message;
+        const iconName = type === 'success' ? 'check-circle' : (type === 'error' ? 'alert-circle' : 'info');
+        const iconColor = type === 'success' ? 'text-emerald-400' : (type === 'error' ? 'text-rose-400' : 'text-blue-400');
+        
+        toast.className = 'toast bg-slate-800/90 backdrop-blur border border-white/10 p-4 rounded-xl shadow-2xl transition-all duration-300 translate-x-0 flex items-center gap-3 w-80 transform opacity-0 translate-y-4';
+        toast.innerHTML = `
+            <div class="flex-shrink-0 ${iconColor}">
+                <i data-lucide="${iconName}" class="w-5 h-5"></i>
+            </div>
+            <div class="flex-1 text-slate-200 font-medium text-sm">${message}</div>
+        `;
         this.toastContainer.appendChild(toast);
+        
+        if (window.lucide) window.lucide.createIcons({ root: toast });
+        
+        // Animate in
+        requestAnimationFrame(() => {
+            toast.classList.remove('opacity-0', 'translate-y-4');
+        });
         
         setTimeout(() => {
             toast.style.opacity = '0';
-            toast.style.transform = 'translateX(100%)';
+            toast.style.transform = 'translateY(10px)';
             setTimeout(() => toast.remove(), 300);
         }, 3000);
     }
@@ -143,6 +160,10 @@ class App {
             }
             
             this.boardEl.appendChild(colNode);
+        }
+        
+        if (window.lucide) {
+            window.lucide.createIcons();
         }
     }
 

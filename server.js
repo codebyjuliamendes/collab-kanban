@@ -6,6 +6,9 @@ const express = require('express');
 const http = require('http');
 const WebSocket = require('ws');
 const path = require('path');
+const helmet = require('helmet');
+const cors = require('cors');
+const compression = require('compression');
 const { initDB, processSync, getSnapshot } = require('./database.js');
 
 const app = express();
@@ -40,6 +43,14 @@ bootstrap();
 
 app.use(express.static(path.join(__dirname, 'public')));
 app.use(express.json());
+
+try {
+    app.use(helmet());
+    app.use(cors());
+    app.use(compression());
+} catch (err) {
+    console.error('Failed to initialize security/performance middleware:', err);
+}
 
 // --- Routes ---
 
@@ -158,7 +169,7 @@ wss.on('connection', (ws) => {
     });
 });
 
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 3002;
 server.listen(PORT, () => {
     console.log(`Server running on http://localhost:${PORT}`);
 });

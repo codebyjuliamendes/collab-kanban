@@ -50,6 +50,9 @@ async function initDB() {
             )
         `);
 
+        db.run(`CREATE INDEX IF NOT EXISTS idx_cards_board_deleted ON cards (boardId, isDeleted)`);
+        db.run(`CREATE INDEX IF NOT EXISTS idx_columns_board_deleted ON columns (boardId, isDeleted)`);
+
         if (!fs.existsSync(dbPath)) {
             saveDB();
         }
