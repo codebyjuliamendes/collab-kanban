@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Collab Kanban</title>
+    <link rel="stylesheet" href="style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <header class="app-header">
+        <div class="logo">KanbanSync</div>
+        <div class="header-right">
+            <div id="connection-status" class="status-badge offline">Offline</div>
+            <div id="presence-avatars" class="presence-container"></div>
+            <button id="add-column-btn" class="btn primary">Add Column</button>
+        </div>
+    </header>
+    
+    <main class="board-container">
+        <div id="board" class="board">
+            <!-- Columns go here -->
+        </div>
+    </main>
+
+    <!-- Templates -->
+    <template id="column-template">
+        <div class="column" data-id="">
+            <div class="column-header">
+                <input class="column-title" type="text" value="New Column">
+                <button class="add-card-btn">+</button>
+            </div>
+            <div class="card-list"></div>
+        </div>
+    </template>
+
+    <template id="card-template">
+        <div class="card" data-id="">
+            <div class="card-labels"></div>
+            <div class="card-title"></div>
+            <div class="card-footer">
+                <div class="card-badges"></div>
+                <div class="card-assignees"></div>
+            </div>
+        </div>
+    </template>
+
+    <div id="toast-container"></div>
+
+    <script src="db.js"></script>
+    <script src="sync.js"></script>
+    <script src="dnd.js"></script>
+    <script src="app.js"></script>
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('/sw.js').then(reg => {
+                    console.log('ServiceWorker registration successful');
+                }).catch(err => {
+                    console.error('ServiceWorker registration failed: ', err);
+                });
+            });
+        }
+    </script>
+</body>
+</html>

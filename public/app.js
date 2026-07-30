@@ -1,0 +1,166 @@
+class App {
+    constructor() {
+        this.boardEl = document.getElementById('board');
+        this.toastContainer = document.getElementById('toast-container');
+        this.presenceContainer = document.getElementById('presence-avatars');
+        this.addColumnBtn = document.getElementById('add-column-btn');
+        this.dnd = new DragDropEngine(this.boardEl);
+        
+        this.addColumnBtn.addEventListener('click', () => this.addColumn());
+        
+        this.init();
+    }
+
+    async init() {
+        await window.sync.init();
+        await this.render();
+    }
+
+    generateId() {
+        return Math.random().toString(36).substring(2, 15);
+    }
+
+    showToast(message) {
+        const toast = document.createElement('div');
+        toast.className = 'toast';
+        toast.textContent = message;
+        this.toastContainer.appendChild(toast);
+        
+        setTimeout(() => {
+            toast.style.opacity = '0';
+            toast.style.transform = 'translateX(100%)';
+            setTimeout(() => toast.remove(), 300);
+        }, 3000);
+    }
+
+    async addColumn() {
+        const columns = await window.db.getAll('columns');
+        const maxOrder = columns.length > 0 ? Math.max(...columns.map(c => c.orderIndex)) : 0;
+        
+        const column = {
+            id: 'col_' + this.generateId(),
+            boardId: window.sync.boardId,
+            title: 'New Column',
+            orderIndex: maxOrder + 10,
+            isDeleted: false
+        };
+        
+        await window.sync.mutate('COLUMN', column);
+        await this.render();
+    }
+
+    async addCard(columnId) {
+        const cards = await window.db.getAll('cards');
+        const colCards = cards.filter(c => c.columnId === columnId);
+        const maxOrder = colCards.length > 0 ? Math.max(...colCards.map(c => c.orderIndex)) : 0;
+        
+        const card = {
+            id: 'card_' + this.generateId(),
+            boardId: window.sync.boardId,
+            columnId: columnId,
+            title: 'New Task',
+            description: '',
+            assignees: [],
+            labels: [],
+            orderIndex: maxOrder + 10,
+            isDeleted: false
+        };
+        
+        await window.sync.mutate('CARD', card);
+        await this.render();
+    }
+
+    async onCardMoved(cardId, newColumnId, newOrder) {
+        const cards = await window.db.getAll('cards');
+        const card = cards.find(c => c.id === cardId);
+        if (card) {
+            card.columnId = newColumnId;
+            card.orderIndex = newOrder;
+            await window.sync.mutate('CARD', card);
+        }
+    }
+
+    async updateColumnTitle(colId, newTitle) {
+        const columns = await window.db.getAll('columns');
+        const col = columns.find(c => c.id === colId);
+        if (col && col.title !== newTitle) {
+            col.title = newTitle;
+            await window.sync.mutate('COLUMN', col);
+        }
+    }
+
+    async updateCardTitle(cardId, newTitle) {
+        const cards = await window.db.getAll('cards');
+        const card = cards.find(c => c.id === cardId);
+        if (card && card.title !== newTitle) {
+            card.title = newTitle;
+            await window.sync.mutate('CARD', card);
+        }
+    }
+
+    async render() {
+        const columns = await window.db.getAll('columns');
+        const cards = await window.db.getAll('cards');
+        
+        columns.sort((a, b) => a.orderIndex - b.orderIndex);
+        
+        this.boardEl.innerHTML = '';
+        
+        const colTemplate = document.getElementById('column-template');
+        const cardTemplate = document.getElementById('card-template');
+
+        for (const col of columns) {
+            if (col.isDeleted) continue;
+            
+            const colNode = colTemplate.content.cloneNode(true);
+            const colEl = colNode.querySelector('.column');
+            colEl.dataset.id = col.id;
+            
+            const titleInput = colNode.querySelector('.column-title');
+            titleInput.value = col.title;
+            titleInput.addEventListener('change', (e) => this.updateColumnTitle(col.id, e.target.value));
+            
+            const addBtn = colNode.querySelector('.add-card-btn');
+            addBtn.addEventListener('click', () => this.addCard(col.id));
+            
+            const listEl = colNode.querySelector('.card-list');
+            
+            const colCards = cards.filter(c => c.columnId === col.id && !c.isDeleted);
+            colCards.sort((a, b) => a.orderIndex - b.orderIndex);
+            
+            for (const card of colCards) {
+                const cardNode = cardTemplate.content.cloneNode(true);
+                const cardEl = cardNode.querySelector('.card');
+                cardEl.dataset.id = card.id;
+                cardEl.dataset.order = card.orderIndex;
+                
+                const titleEl = cardNode.querySelector('.card-title');
+                titleEl.textContent = card.title;
+                titleEl.contentEditable = true;
+                titleEl.addEventListener('blur', (e) => this.updateCardTitle(card.id, e.target.textContent));
+                
+                listEl.appendChild(cardNode);
+            }
+            
+            this.boardEl.appendChild(colNode);
+        }
+    }
+
+    updatePresence(users) {
+        this.presenceContainer.innerHTML = '';
+        users.forEach(user => {
+            if (user.userId !== window.sync.userId) {
+                const avatar = document.createElement('div');
+                avatar.className = 'avatar';
+                avatar.style.backgroundColor = user.color;
+                avatar.textContent = user.userId.substring(0, 2).toUpperCase();
+                avatar.title = `User ${user.userId}`;
+                this.presenceContainer.appendChild(avatar);
+            }
+        });
+    }
+}
+
+window.addEventListener('DOMContentLoaded', () => {
+    window.app = new App();
+});
