@@ -148,17 +148,17 @@ class SyncManager {
     }
 
     setStatus(className, text) {
-        this.statusEl.className = `status-badge ${className}`;
+        this.statusEl.className = `status-badge px-3 py-1 rounded-full text-xs font-semibold uppercase tracking-wider ${className}`;
         this.statusEl.textContent = text;
     }
 
     updateStatus() {
         if (!this.isOnline) {
-            this.setStatus('offline', 'Offline');
+            this.setStatus('bg-red-500/20 text-red-400 border border-red-500/30', 'Offline');
         } else if (this.ws && this.ws.readyState === WebSocket.OPEN) {
-            this.setStatus('online', 'Online');
+            this.setStatus('bg-emerald-500/20 text-emerald-400 border border-emerald-500/30', 'Online');
         } else {
-            this.setStatus('syncing', 'Connecting');
+            this.setStatus('bg-amber-500/20 text-amber-400 border border-amber-500/30', 'Connecting');
         }
     }
 }

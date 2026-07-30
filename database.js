@@ -1,3 +1,6 @@
+/**
+ * @fileoverview Database operations using sql.js with robust error handling.
+ */
 const initSqlJs = require('sql.js');
 const fs = require('fs');
 const path = require('path');
@@ -6,71 +9,106 @@ const { queryAll, queryOne, runSql, runTransaction } = require('./db-helper.js')
 let db;
 const dbPath = path.join(__dirname, 'kanban.db');
 
+/**
+ * Initializes the SQLite database.
+ * Loads from disk if exists, otherwise creates tables.
+ * @returns {Promise<void>}
+ */
 async function initDB() {
-    const SQL = await initSqlJs();
-    if (fs.existsSync(dbPath)) {
-        const fileBuffer = fs.readFileSync(dbPath);
-        db = new SQL.Database(fileBuffer);
-    } else {
-        db = new SQL.Database();
+    try {
+        const SQL = await initSqlJs();
+        if (fs.existsSync(dbPath)) {
+            const fileBuffer = fs.readFileSync(dbPath);
+            db = new SQL.Database(fileBuffer);
+        } else {
+            db = new SQL.Database();
+        }
+        
+        db.run(`
+            CREATE TABLE IF NOT EXISTS cards (
+                id TEXT PRIMARY KEY,
+                boardId TEXT NOT NULL,
+                columnId TEXT NOT NULL,
+                title TEXT,
+                description TEXT,
+                assignees TEXT,
+                labels TEXT,
+                orderIndex REAL,
+                isDeleted INTEGER DEFAULT 0,
+                updatedAt INTEGER NOT NULL
+            )
+        `);
+
+        db.run(`
+            CREATE TABLE IF NOT EXISTS columns (
+                id TEXT PRIMARY KEY,
+                boardId TEXT NOT NULL,
+                title TEXT,
+                orderIndex REAL,
+                isDeleted INTEGER DEFAULT 0,
+                updatedAt INTEGER NOT NULL
+            )
+        `);
+
+        if (!fs.existsSync(dbPath)) {
+            saveDB();
+        }
+    } catch (err) {
+        console.error('Error during database initialization:', err);
+        throw err;
     }
-    
-    db.run(`
-        CREATE TABLE IF NOT EXISTS cards (
-            id TEXT PRIMARY KEY,
-            boardId TEXT,
-            columnId TEXT,
-            title TEXT,
-            description TEXT,
-            assignees TEXT,
-            labels TEXT,
-            orderIndex REAL,
-            isDeleted INTEGER DEFAULT 0,
-            updatedAt INTEGER
-        )
-    `);
+}
 
-    db.run(`
-        CREATE TABLE IF NOT EXISTS columns (
-            id TEXT PRIMARY KEY,
-            boardId TEXT,
-            title TEXT,
-            orderIndex REAL,
-            isDeleted INTEGER DEFAULT 0,
-            updatedAt INTEGER
-        )
-    `);
-
-    if (!fs.existsSync(dbPath)) {
+/**
+ * Persists the database to disk.
+ */
+function saveDB() {
+    try {
         const data = db.export();
         fs.writeFileSync(dbPath, Buffer.from(data));
+    } catch (err) {
+        console.error('Error saving database to disk:', err);
+        throw err;
     }
 }
 
-function saveDB() {
-    const data = db.export();
-    fs.writeFileSync(dbPath, Buffer.from(data));
-}
-
+/**
+ * Returns the entire state of the board.
+ * @returns {Object} An object containing arrays of cards and columns.
+ */
 function getSnapshot() {
-    const cards = queryAll(db, 'SELECT * FROM cards WHERE isDeleted = 0');
-    const columns = queryAll(db, 'SELECT * FROM columns WHERE isDeleted = 0');
-    
-    return {
-        cards: cards.map(c => ({
-            ...c, 
-            isDeleted: !!c.isDeleted,
-            assignees: JSON.parse(c.assignees || '[]'),
-            labels: JSON.parse(c.labels || '[]')
-        })),
-        columns: columns.map(c => ({
-            ...c,
-            isDeleted: !!c.isDeleted
-        }))
-    };
+    try {
+        const cards = queryAll(db, 'SELECT * FROM cards WHERE isDeleted = 0');
+        const columns = queryAll(db, 'SELECT * FROM columns WHERE isDeleted = 0');
+        
+        return {
+            cards: cards.map(c => ({
+                ...c, 
+                isDeleted: !!c.isDeleted,
+                assignees: JSON.parse(c.assignees || '[]'),
+                labels: JSON.parse(c.labels || '[]')
+            })),
+            columns: columns.map(c => ({
+                ...c,
+                isDeleted: !!c.isDeleted
+            }))
+        };
+    } catch (err) {
+        console.error('Error fetching snapshot:', err);
+        throw new Error('Failed to retrieve board snapshot');
+    }
 }
 
+/**
+ * Processes incoming sync changes and applies them if they are newer.
+ * @param {Array<Object>} changes - Array of change objects.
+ * @returns {Object} Result object with appliedChanges and currentServerTime.
+ */
 function processSync(changes) {
+    if (!Array.isArray(changes)) {
+        throw new Error('Changes must be an array');
+    }
+
     const appliedChanges = [];
     
     const insertCardSql = `
@@ -101,46 +139,54 @@ function processSync(changes) {
         WHERE excluded.updatedAt > columns.updatedAt
     `;
 
-    runTransaction(db, () => {
-        for (const change of changes) {
-            const { type, payload } = change;
-            if (type === 'CARD') {
-                const current = queryOne(db, 'SELECT updatedAt FROM cards WHERE id = $id', { $id: payload.id });
-                if (!current || payload.updatedAt > current.updatedAt) {
-                    runSql(db, insertCardSql, {
-                        $id: payload.id,
-                        $boardId: payload.boardId,
-                        $columnId: payload.columnId,
-                        $title: payload.title,
-                        $description: payload.description,
-                        $assignees: JSON.stringify(payload.assignees || []),
-                        $labels: JSON.stringify(payload.labels || []),
-                        $orderIndex: payload.orderIndex,
-                        $isDeleted: payload.isDeleted ? 1 : 0,
-                        $updatedAt: payload.updatedAt
-                    });
-                    appliedChanges.push(change);
-                }
-            } else if (type === 'COLUMN') {
-                const current = queryOne(db, 'SELECT updatedAt FROM columns WHERE id = $id', { $id: payload.id });
-                if (!current || payload.updatedAt > current.updatedAt) {
-                    runSql(db, insertColumnSql, {
-                        $id: payload.id,
-                        $boardId: payload.boardId,
-                        $title: payload.title,
-                        $orderIndex: payload.orderIndex,
-                        $isDeleted: payload.isDeleted ? 1 : 0,
-                        $updatedAt: payload.updatedAt
-                    });
-                    appliedChanges.push(change);
+    try {
+        runTransaction(db, () => {
+            for (const change of changes) {
+                const { type, payload } = change;
+                
+                if (type === 'CARD') {
+                    const current = queryOne(db, 'SELECT updatedAt FROM cards WHERE id = $id', { $id: payload.id });
+                    if (!current || payload.updatedAt > current.updatedAt) {
+                        runSql(db, insertCardSql, {
+                            $id: payload.id,
+                            $boardId: payload.boardId,
+                            $columnId: payload.columnId,
+                            $title: payload.title || '',
+                            $description: payload.description || '',
+                            $assignees: JSON.stringify(payload.assignees || []),
+                            $labels: JSON.stringify(payload.labels || []),
+                            $orderIndex: payload.orderIndex || 0,
+                            $isDeleted: payload.isDeleted ? 1 : 0,
+                            $updatedAt: payload.updatedAt
+                        });
+                        appliedChanges.push(change);
+                    }
+                } else if (type === 'COLUMN') {
+                    const current = queryOne(db, 'SELECT updatedAt FROM columns WHERE id = $id', { $id: payload.id });
+                    if (!current || payload.updatedAt > current.updatedAt) {
+                        runSql(db, insertColumnSql, {
+                            $id: payload.id,
+                            $boardId: payload.boardId,
+                            $title: payload.title || '',
+                            $orderIndex: payload.orderIndex || 0,
+                            $isDeleted: payload.isDeleted ? 1 : 0,
+                            $updatedAt: payload.updatedAt
+                        });
+                        appliedChanges.push(change);
+                    }
                 }
             }
+        });
+
+        if (appliedChanges.length > 0) {
+            saveDB();
         }
-    });
 
-    if (appliedChanges.length > 0) saveDB();
-
-    return { appliedChanges, currentServerTime: Date.now() };
+        return { appliedChanges, currentServerTime: Date.now() };
+    } catch (err) {
+        console.error('Error processing sync:', err);
+        throw new Error('Failed to process synchronization');
+    }
 }
 
 module.exports = { initDB, getSnapshot, processSync };

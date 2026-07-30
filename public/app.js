@@ -22,7 +22,7 @@ class App {
 
     showToast(message) {
         const toast = document.createElement('div');
-        toast.className = 'toast';
+        toast.className = 'toast bg-slate-800/90 backdrop-blur border border-white/10 px-4 py-3 rounded-lg text-sm shadow-xl transition-all duration-300 translate-x-0';
         toast.textContent = message;
         this.toastContainer.appendChild(toast);
         
@@ -151,7 +151,7 @@ class App {
         users.forEach(user => {
             if (user.userId !== window.sync.userId) {
                 const avatar = document.createElement('div');
-                avatar.className = 'avatar';
+                avatar.className = 'avatar w-8 h-8 rounded-full border-2 border-slate-900 flex items-center justify-center text-xs font-bold text-white shadow-sm ring-1 ring-white/10 relative z-10';
                 avatar.style.backgroundColor = user.color;
                 avatar.textContent = user.userId.substring(0, 2).toUpperCase();
                 avatar.title = `User ${user.userId}`;
