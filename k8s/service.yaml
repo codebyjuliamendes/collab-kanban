@@ -1,0 +1,11 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: collab-kanban-service
+spec:
+  type: ClusterIP
+  selector:
+    app: collab-kanban
+  ports:
+  - port: 3002
+    targetPort: 3002

@@ -1,0 +1,50 @@
+{
+  "swagger": "2.0",
+  "info": {
+    "version": "1.0.0",
+    "title": "Collab Kanban API",
+    "description": "API documentation for Collab Kanban"
+  },
+  "host": "localhost:3002",
+  "basePath": "/",
+  "schemes": ["http"],
+  "paths": {
+    "/api/snapshot": {
+      "get": {
+        "summary": "Get the current snapshot of the Kanban board",
+        "produces": ["application/json"],
+        "responses": {
+          "200": {
+            "description": "Successful operation"
+          }
+        }
+      }
+    },
+    "/api/sync": {
+      "post": {
+        "summary": "Sync changes to the Kanban board",
+        "consumes": ["application/json"],
+        "produces": ["application/json"],
+        "parameters": [
+          {
+            "in": "body",
+            "name": "body",
+            "description": "Array of changes",
+            "required": true,
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "object"
+              }
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful sync"
+          }
+        }
+      }
+    }
+  }
+}

@@ -85,6 +85,28 @@ app.post('/api/sync', (req, res, next) => {
         next(err);
     }
 });
+// --- Swagger API Docs ---
+app.get('/api-docs', (req, res) => {
+    res.send(`<!DOCTYPE html>
+<html>
+<head>
+  <link rel="stylesheet" href="https://unpkg.com/swagger-ui-dist/swagger-ui.css">
+  <title>API Documentation</title>
+</head>
+<body>
+  <div id="swagger-ui"></div>
+  <script src="https://unpkg.com/swagger-ui-dist/swagger-ui-bundle.js"></script>
+  <script>
+    window.onload = () => {
+      window.ui = SwaggerUIBundle({
+        url: '/swagger.json',
+        dom_id: '#swagger-ui',
+      });
+    };
+  </script>
+</body>
+</html>`);
+});
 
 // --- Error Middleware ---
 app.use((err, req, res, next) => {

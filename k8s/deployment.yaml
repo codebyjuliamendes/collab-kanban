@@ -1,0 +1,38 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: collab-kanban
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: collab-kanban
+  template:
+    metadata:
+      labels:
+        app: collab-kanban
+    spec:
+      containers:
+      - name: collab-kanban
+        image: collab-kanban:latest
+        ports:
+        - containerPort: 3002
+        resources:
+          requests:
+            cpu: "100m"
+            memory: "128Mi"
+          limits:
+            cpu: "250m"
+            memory: "256Mi"
+        readinessProbe:
+          httpGet:
+            path: /api/snapshot
+            port: 3002
+          initialDelaySeconds: 5
+          periodSeconds: 10
+        livenessProbe:
+          httpGet:
+            path: /api/snapshot
+            port: 3002
+          initialDelaySeconds: 15
+          periodSeconds: 20

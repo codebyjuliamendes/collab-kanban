@@ -17,6 +17,7 @@ A lightning-fast, visually stunning, real-time collaborative Kanban board. Desig
 - **Yjs & WebRTC Peer-to-Peer Sync**: Advanced V3 architecture featuring Yjs and WebRTC fallback for continuous sync across tabs and local networks when the WebSocket server is unreachable.
 - **Live Presence**: Instantly see who else is online and viewing the board.
 - **Mathematical CRDT LWW-Register**: Rigorous Last-Write-Wins (LWW) element set logic with robust ID tie-breaking, ensuring flawless convergence across distributed clients.
+- **V4 Infrastructure**: Ready for production with Kubernetes manifests (Deployment, Service, Ingress), automated CI/CD pipelines via GitHub Actions, and interactive Swagger API documentation.
 
 ---
 
