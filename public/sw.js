@@ -48,3 +48,46 @@ self.addEventListener('fetch', event => {
         })
     );
 });
+
+self.addEventListener('sync', event => {
+    if (event.tag === 'kanban-sync') {
+        event.waitUntil(syncData());
+    }
+});
+
+async function syncData() {
+    return new Promise((resolve, reject) => {
+        const request = indexedDB.open('kanban-db', 1);
+        request.onsuccess = (e) => {
+            const db = e.target.result;
+            const tx = db.transaction('syncQueue', 'readonly');
+            const store = tx.objectStore('syncQueue');
+            const getAll = store.getAll();
+            
+            getAll.onsuccess = async () => {
+                const queue = getAll.result;
+                if (queue.length === 0) return resolve();
+                
+                try {
+                    const res = await fetch('/api/sync', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(queue)
+                    });
+                    
+                    if (res.ok) {
+                        const delTx = db.transaction('syncQueue', 'readwrite');
+                        delTx.objectStore('syncQueue').clear();
+                        resolve();
+                    } else {
+                        reject('Sync failed');
+                    }
+                } catch (err) {
+                    reject(err);
+                }
+            };
+            getAll.onerror = () => reject('IDB Error');
+        };
+        request.onerror = () => reject('IDB Error');
+    });
+}

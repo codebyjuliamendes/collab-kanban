@@ -12,10 +12,11 @@ A lightning-fast, visually stunning, real-time collaborative Kanban board. Desig
 
 ## 💎 Features
 - **Sleek Glassmorphism UI**: Beautiful, modern UI driven entirely by Tailwind CSS, featuring dark mode, transparent panels, and polished drag-and-drop animations.
-- **Offline First**: fully functional without a network connection. Edits are queued via IndexedDB and synchronized automatically upon reconnection.
+- **Offline First & Service Worker Background Sync**: fully functional without a network connection. Edits are queued via IndexedDB and synchronized seamlessly in the background (via Service Worker Sync API) upon reconnection.
 - **Real-Time Collaboration**: Sub-millisecond state broadcasting using Native WebSockets.
+- **Yjs & WebRTC Peer-to-Peer Sync**: Advanced V3 architecture featuring Yjs and WebRTC fallback for continuous sync across tabs and local networks when the WebSocket server is unreachable.
 - **Live Presence**: Instantly see who else is online and viewing the board.
-- **CRDT-inspired Conflict Resolution**: Uses Last-Write-Wins (LWW) element set logic via `updatedAt` timestamps to effortlessly merge edits.
+- **Mathematical CRDT LWW-Register**: Rigorous Last-Write-Wins (LWW) element set logic with robust ID tie-breaking, ensuring flawless convergence across distributed clients.
 
 ---
 
