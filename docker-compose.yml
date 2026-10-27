@@ -1,13 +1,23 @@
-version: '3.8'
-
 services:
   app:
     build: .
+    image: collab-kanban:local
     ports:
-      - "3002:3002"
+      - '${HOST_PORT:-3002}:3002'
     environment:
-      - PORT=3002
+      NODE_ENV: production
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+      ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:-}
+      BOARD_CREATION_TOKEN: ${BOARD_CREATION_TOKEN:-}
+      TRUST_PROXY: ${TRUST_PROXY:-0}
     volumes:
-      - .:/app
-      - /app/node_modules
-    restart: always
+      - kanban-data:/data
+    read_only: true
+    tmpfs:
+      - /tmp
+    security_opt:
+      - no-new-privileges:true
+    restart: unless-stopped
+
+volumes:
+  kanban-data:

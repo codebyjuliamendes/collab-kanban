@@ -1,0 +1,14 @@
+.git
+.github
+node_modules
+data
+coverage
+test
+k8s
+*.md
+*.db
+.env
+.env.*
+!.env.example
+Dockerfile
+docker-compose.yml
