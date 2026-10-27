@@ -1,22 +1,40 @@
 {
   "name": "collab-kanban",
-  "version": "1.0.0",
-  "description": "Collaborative Distributed Kanban Board",
-  "main": "server.js",
+  "version": "2.0.0",
+  "private": true,
+  "description": "Real-time collaborative Kanban board (Node.js, Express, WebSocket, SQLite)",
+  "license": "MIT",
+  "main": "src/server.js",
+  "engines": {
+    "node": ">=22"
+  },
   "scripts": {
-    "start": "node server.js"
+    "start": "node server.js",
+    "dev": "node --watch server.js",
+    "test": "node --test \"test/**/*.test.js\"",
+    "test:coverage": "node --test --experimental-test-coverage \"test/**/*.test.js\"",
+    "lint": "eslint .",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "check": "npm run lint && npm run format:check && npm test",
+    "board:invite": "node scripts/board-invite.js"
   },
   "dependencies": {
-    "compression": "^1.8.1",
-    "cors": "^2.8.6",
-    "express": "^4.19.2",
+    "compression": "^1.8.2",
+    "express": "^4.22.3",
+    "express-rate-limit": "^7.5.1",
     "helmet": "^8.3.0",
-    "idb": "^8.0.3",
-    "opossum": "^10.0.0",
-    "sql.js": "^1.10.3",
-    "uuid": "^10.0.0",
-    "ws": "^8.18.0",
-    "y-webrtc": "^10.3.0",
-    "yjs": "^13.6.31"
+    "pino": "^9.14.0",
+    "sql.js": "^1.15.2",
+    "swagger-ui-dist": "^5.34.0",
+    "ws": "^8.22.0",
+    "zod": "^4.6.7"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.39.5",
+    "eslint": "^9.39.5",
+    "globals": "^15.15.0",
+    "prettier": "^3.9.10",
+    "supertest": "^7.3.1"
   }
 }

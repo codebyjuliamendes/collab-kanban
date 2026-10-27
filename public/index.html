@@ -1,137 +1,300 @@
-<!DOCTYPE html>
-<html lang="en" class="dark">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="light dark" />
+    <meta name="description" content="Real-time collaborative Kanban board with offline support." />
     <title>Collab Kanban</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script>
-        tailwind.config = {
-            darkMode: 'class',
-            theme: {
-                extend: {
-                    fontFamily: {
-                        sans: ['Inter', 'sans-serif'],
-                    },
-                    colors: {
-                        slate: {
-                            850: '#151e2e',
-                            900: '#0f172a',
-                        }
-                    }
-                }
-            }
-        }
-    </script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    <style type="text/tailwindcss">
-        @layer utilities {
-            .glass-panel {
-                @apply bg-slate-800/60 backdrop-blur-md border border-white/10;
-            }
-            .glass-header {
-                @apply bg-slate-900/80 backdrop-blur-lg border-b border-white/10;
-            }
-            .text-gradient {
-                @apply bg-gradient-to-r from-indigo-400 to-purple-400 bg-clip-text text-transparent;
-            }
-            
-            /* Drag and Drop Specific Styles */
-            .is-dragging {
-                @apply opacity-80 shadow-2xl scale-105 rotate-2 cursor-grabbing z-50;
-            }
-            .drop-indicator {
-                @apply h-1 bg-indigo-500 rounded-full my-1 transition-transform duration-200;
-            }
-            
-            /* Scrollbar styling */
-            ::-webkit-scrollbar {
-                @apply w-2 h-2;
-            }
-            ::-webkit-scrollbar-track {
-                @apply bg-transparent;
-            }
-            ::-webkit-scrollbar-thumb {
-                @apply bg-slate-600 rounded-full;
-            }
-            ::-webkit-scrollbar-thumb:hover {
-                @apply bg-slate-500;
-            }
-        }
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="/styles.css" />
+    <script src="/js/theme.js"></script>
+    <script src="/shared/rank.js" defer></script>
+    <script type="module" src="/js/app.js"></script>
+  </head>
+  <body>
+    <a class="skip-link" href="#main">Skip to content</a>
 
-        body {
-            @apply bg-slate-900 text-slate-100 h-screen flex flex-col overflow-hidden font-sans;
-            background-image: radial-gradient(circle at top right, #312e81 0%, transparent 40%),
-                              radial-gradient(circle at bottom left, #0f172a 0%, transparent 40%);
-        }
-    </style>
-    <script src="https://unpkg.com/lucide@latest"></script>
-</head>
-<body>
-    <header class="app-header glass-header flex justify-between items-center px-6 py-4 z-10 relative shadow-md">
-        <div class="logo text-2xl font-bold text-gradient tracking-tight">KanbanSync</div>
-        <div class="header-right flex items-center gap-4">
-            <div id="connection-status" class="status-badge px-3 py-1 rounded-full text-xs font-semibold uppercase tracking-wider bg-red-500/20 text-red-400">Offline</div>
-            <div id="presence-avatars" class="presence-container flex -space-x-2"></div>
-            <button id="add-column-btn" class="btn primary px-4 py-2 rounded-lg font-medium text-white bg-indigo-600 hover:bg-indigo-500 transition-colors shadow-lg shadow-indigo-500/20 active:scale-95 flex items-center gap-2">
-                <i data-lucide="plus" class="w-4 h-4"></i> Add Column
-            </button>
-        </div>
+    <header class="app-header">
+      <a class="brand" href="#" aria-label="Collab Kanban, all boards">
+        <svg class="icon" aria-hidden="true" viewBox="0 0 24 24"><use href="#i-board" /></svg>
+        <span>Collab Kanban</span>
+      </a>
+      <h1 id="board-title" class="board-title" hidden></h1>
+      <div class="header-actions">
+        <p id="connection-status" class="status" role="status" hidden></p>
+        <ul id="presence" class="presence" aria-label="People on this board" hidden></ul>
+        <button id="name-btn" class="btn ghost" type="button">
+          <svg class="icon" aria-hidden="true" viewBox="0 0 24 24"><use href="#i-user" /></svg>
+          <span class="btn-label">Your name</span>
+        </button>
+        <button id="share-btn" class="btn ghost" type="button" hidden>
+          <svg class="icon" aria-hidden="true" viewBox="0 0 24 24"><use href="#i-share" /></svg>
+          <span class="btn-label">Share</span>
+        </button>
+        <button id="theme-btn" class="btn ghost icon-only" type="button" aria-label="Switch to dark theme">
+          <svg class="icon" aria-hidden="true" viewBox="0 0 24 24"><use href="#i-theme" /></svg>
+        </button>
+        <button id="add-column-btn" class="btn primary" type="button" hidden>
+          <svg class="icon" aria-hidden="true" viewBox="0 0 24 24"><use href="#i-plus" /></svg>
+          <span class="btn-label">Add column</span>
+        </button>
+      </div>
     </header>
-    
-    <main class="board-container flex-1 overflow-x-auto overflow-y-hidden p-6 relative z-0">
-        <div id="board" class="board flex gap-6 h-full items-start">
-            <div id="skeleton-loader" class="flex gap-6 w-full animate-pulse">
-                <div class="glass-panel rounded-xl w-80 h-96"></div>
-                <div class="glass-panel rounded-xl w-80 h-64"></div>
-                <div class="glass-panel rounded-xl w-80 h-80"></div>
+
+    <main id="main" tabindex="-1">
+      <!-- Home: create or pick a board -->
+      <section id="home-view" class="home" aria-labelledby="home-heading" hidden>
+        <div class="home-card">
+          <h1 id="home-heading">Your boards</h1>
+          <form id="create-board-form" class="create-board" novalidate>
+            <label for="board-title-input">New board name</label>
+            <div class="inline-form">
+              <input
+                id="board-title-input"
+                name="title"
+                type="text"
+                maxlength="120"
+                required
+                autocomplete="off"
+                placeholder="e.g. Product roadmap"
+              />
+              <button class="btn primary" type="submit">Create board</button>
             </div>
+            <p id="create-board-error" class="form-error" role="alert"></p>
+          </form>
+          <ul id="board-list" class="board-list" aria-label="Boards on this device"></ul>
+          <p id="board-list-empty" class="empty-state">
+            No boards on this device yet. Create one, or open an invite link someone shared with you.
+          </p>
         </div>
+      </section>
+
+      <!-- Board -->
+      <section id="board-view" class="board-view" aria-labelledby="board-title" hidden>
+        <p id="readonly-banner" class="banner" hidden>You have view-only access to this board.</p>
+        <p id="dnd-help" class="visually-hidden">
+          Press Space or Enter to pick up the card, arrow keys to move it, Space or Enter to drop, Escape to cancel.
+        </p>
+        <div id="board-scroller" class="board-scroller">
+          <div id="board" class="board" aria-busy="true">
+            <div class="skeleton" aria-hidden="true"><span></span><span></span><span></span></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Access problems -->
+      <section id="message-view" class="home" hidden>
+        <div class="home-card">
+          <h1 id="message-title"></h1>
+          <p id="message-body"></p>
+          <a class="btn primary" href="#">Go to your boards</a>
+        </div>
+      </section>
     </main>
 
-    <!-- Templates -->
-    <template id="column-template">
-        <div class="column glass-panel rounded-xl w-80 min-w-[20rem] max-h-full flex flex-col shadow-xl" data-id="">
-            <div class="column-header p-4 flex justify-between items-center border-b border-white/5 cursor-grab active:cursor-grabbing group">
-                <input class="column-title bg-transparent border-none text-slate-100 text-base font-semibold outline-none w-full placeholder-slate-400 focus:ring-0" type="text" value="New Column">
-                <button class="add-card-btn text-slate-400 hover:text-indigo-400 transition-colors opacity-0 group-hover:opacity-100 focus:opacity-100 flex items-center justify-center p-1 rounded hover:bg-white/5">
-                    <i data-lucide="plus" class="w-5 h-5"></i>
-                </button>
-            </div>
-            <div class="card-list p-3 overflow-y-auto flex-1 min-h-[50px] space-y-3"></div>
+    <!-- Card editor -->
+    <dialog id="card-dialog" class="dialog" aria-labelledby="card-dialog-title">
+      <form id="card-form" method="dialog" novalidate>
+        <h2 id="card-dialog-title">Edit card</h2>
+        <p id="card-conflict" class="banner warning" role="alert" hidden></p>
+        <label for="card-title-input">Title</label>
+        <input id="card-title-input" name="title" type="text" maxlength="300" required autocomplete="off" />
+        <label for="card-description-input">Description</label>
+        <textarea id="card-description-input" name="description" rows="6" maxlength="5000"></textarea>
+        <p id="card-form-error" class="form-error" role="alert"></p>
+        <div class="dialog-actions">
+          <button id="card-delete-btn" class="btn danger" type="button">Delete card</button>
+          <span class="spacer"></span>
+          <button class="btn ghost" type="button" data-close>Cancel</button>
+          <button class="btn primary" type="submit">Save</button>
         </div>
+      </form>
+    </dialog>
+
+    <!-- Share -->
+    <dialog id="share-dialog" class="dialog" aria-labelledby="share-dialog-title">
+      <div class="dialog-body">
+        <h2 id="share-dialog-title">Share this board</h2>
+        <p class="hint">Anyone with a link gets that access. Links contain a secret key; share them privately.</p>
+        <div class="share-row" data-role="editor">
+          <h3>Can edit</h3>
+          <div class="inline-form">
+            <input type="text" readonly aria-label="Edit link" placeholder="Generate a link to share" />
+            <button class="btn ghost" type="button" data-action="copy">Copy</button>
+          </div>
+          <div class="row-actions">
+            <button class="btn ghost" type="button" data-action="generate">New link</button>
+            <button class="btn ghost danger-text" type="button" data-action="revoke">Revoke other edit links</button>
+          </div>
+        </div>
+        <div class="share-row" data-role="viewer">
+          <h3>Can view</h3>
+          <div class="inline-form">
+            <input type="text" readonly aria-label="View link" placeholder="Generate a link to share" />
+            <button class="btn ghost" type="button" data-action="copy">Copy</button>
+          </div>
+          <div class="row-actions">
+            <button class="btn ghost" type="button" data-action="generate">New link</button>
+            <button class="btn ghost danger-text" type="button" data-action="revoke">Revoke view links</button>
+          </div>
+        </div>
+        <p id="share-error" class="form-error" role="alert"></p>
+        <div class="dialog-actions">
+          <button id="forget-board-btn" class="btn ghost danger-text" type="button">Remove from this device</button>
+          <span class="spacer"></span>
+          <button class="btn primary" type="button" data-close>Done</button>
+        </div>
+      </div>
+    </dialog>
+
+    <!-- Display name -->
+    <dialog id="name-dialog" class="dialog" aria-labelledby="name-dialog-title">
+      <form id="name-form" method="dialog" novalidate>
+        <h2 id="name-dialog-title">Your display name</h2>
+        <p class="hint">Shown to other people on the board.</p>
+        <label for="name-input">Name</label>
+        <input id="name-input" name="name" type="text" maxlength="40" autocomplete="nickname" />
+        <div class="dialog-actions">
+          <span class="spacer"></span>
+          <button class="btn ghost" type="button" data-close>Cancel</button>
+          <button class="btn primary" type="submit">Save</button>
+        </div>
+      </form>
+    </dialog>
+
+    <div id="announcer" class="visually-hidden" aria-live="assertive" aria-atomic="true"></div>
+    <div id="toasts" class="toasts" role="status" aria-live="polite"></div>
+
+    <template id="column-template">
+      <section class="column" data-id="">
+        <header class="column-header">
+          <input class="column-title" type="text" maxlength="100" aria-label="Column title" />
+          <div class="column-actions">
+            <button
+              class="btn icon-only ghost small"
+              type="button"
+              data-action="column-left"
+              aria-label="Move column left"
+            >
+              <svg class="icon" aria-hidden="true" viewBox="0 0 24 24"><use href="#i-left" /></svg>
+            </button>
+            <button
+              class="btn icon-only ghost small"
+              type="button"
+              data-action="column-right"
+              aria-label="Move column right"
+            >
+              <svg class="icon" aria-hidden="true" viewBox="0 0 24 24"><use href="#i-right" /></svg>
+            </button>
+            <button
+              class="btn icon-only ghost small"
+              type="button"
+              data-action="column-delete"
+              aria-label="Delete column"
+            >
+              <svg class="icon" aria-hidden="true" viewBox="0 0 24 24"><use href="#i-trash" /></svg>
+            </button>
+          </div>
+        </header>
+        <p class="column-count"></p>
+        <ul class="card-list"></ul>
+        <p class="column-empty">No cards yet</p>
+        <form class="card-composer" novalidate>
+          <input type="text" name="title" maxlength="300" autocomplete="off" placeholder="Add a card" />
+          <button class="btn icon-only primary small" type="submit" aria-label="Add card">
+            <svg class="icon" aria-hidden="true" viewBox="0 0 24 24"><use href="#i-plus" /></svg>
+          </button>
+        </form>
+      </section>
     </template>
 
     <template id="card-template">
-        <div class="card bg-slate-700/80 hover:bg-slate-700 border border-slate-600/50 hover:border-indigo-500/50 rounded-lg p-4 cursor-grab active:cursor-grabbing transition-all duration-200 hover:shadow-lg select-none touch-none" data-id="">
-            <div class="card-labels flex gap-2 mb-2 flex-wrap empty:hidden"></div>
-            <div class="card-title text-sm font-medium text-slate-200 outline-none focus:ring-1 focus:ring-indigo-500 rounded px-1 -mx-1 py-0.5"></div>
-            <div class="card-footer flex justify-between items-center mt-3 empty:hidden">
-                <div class="card-badges flex gap-2"></div>
-                <div class="card-assignees flex -space-x-1"></div>
-            </div>
-        </div>
+      <li class="card" data-id="">
+        <button class="card-grip" type="button" aria-pressed="false" aria-describedby="dnd-help">
+          <svg class="icon" aria-hidden="true" viewBox="0 0 24 24"><use href="#i-grip" /></svg>
+        </button>
+        <button class="card-open" type="button">
+          <span class="card-title"></span>
+          <span class="card-description"></span>
+        </button>
+      </li>
     </template>
 
-    <div id="toast-container" class="fixed bottom-4 right-4 flex flex-col gap-2 z-[9999]"></div>
-
-    <script src="https://cdn.jsdelivr.net/npm/yjs@13.6.1/dist/yjs.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/y-webrtc@13.2.1/dist/y-webrtc.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/idb@7.1.1/build/umd.js"></script>
-    <script src="db.js"></script>
-    <script src="sync.js"></script>
-    <script src="dnd.js"></script>
-    <script src="app.js"></script>
-    <script>
-        if ('serviceWorker' in navigator) {
-            window.addEventListener('load', () => {
-                navigator.serviceWorker.register('/sw.js').then(reg => {
-                    console.log('ServiceWorker registration successful');
-                }).catch(err => {
-                    console.error('ServiceWorker registration failed: ', err);
-                });
-            });
-        }
-    </script>
-</body>
+    <svg xmlns="http://www.w3.org/2000/svg" hidden>
+      <symbol
+        id="i-board"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="2"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+      >
+        <rect x="3" y="3" width="18" height="18" rx="2" />
+        <path d="M9 3v18M15 3v12" />
+      </symbol>
+      <symbol id="i-plus" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+        <path d="M12 5v14M5 12h14" />
+      </symbol>
+      <symbol id="i-user" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+        <circle cx="12" cy="8" r="4" />
+        <path d="M4 21a8 8 0 0 1 16 0" />
+      </symbol>
+      <symbol
+        id="i-share"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="2"
+        stroke-linecap="round"
+      >
+        <circle cx="18" cy="5" r="3" />
+        <circle cx="6" cy="12" r="3" />
+        <circle cx="18" cy="19" r="3" />
+        <path d="m8.6 13.5 6.8 4M15.4 6.5l-6.8 4" />
+      </symbol>
+      <symbol
+        id="i-theme"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="2"
+        stroke-linecap="round"
+      >
+        <path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z" />
+      </symbol>
+      <symbol id="i-left" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+        <path d="m15 18-6-6 6-6" />
+      </symbol>
+      <symbol
+        id="i-right"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="2"
+        stroke-linecap="round"
+      >
+        <path d="m9 18 6-6-6-6" />
+      </symbol>
+      <symbol
+        id="i-trash"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="2"
+        stroke-linecap="round"
+      >
+        <path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6" />
+      </symbol>
+      <symbol id="i-grip" viewBox="0 0 24 24" fill="currentColor">
+        <circle cx="9" cy="6" r="1.6" />
+        <circle cx="15" cy="6" r="1.6" />
+        <circle cx="9" cy="12" r="1.6" />
+        <circle cx="15" cy="12" r="1.6" />
+        <circle cx="9" cy="18" r="1.6" />
+        <circle cx="15" cy="18" r="1.6" />
+      </symbol>
+    </svg>
+  </body>
 </html>

@@ -1,9 +1,16 @@
+# Single replica on purpose: the board state lives in one SQLite file and the
+# real-time fan-out is in process. Running more replicas would split users
+# into islands that never see each other's changes (see README, "Limitations").
 apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: collab-kanban
+  labels:
+    app: collab-kanban
 spec:
-  replicas: 2
+  replicas: 1
+  strategy:
+    type: Recreate # never two pods writing the same volume
   selector:
     matchLabels:
       app: collab-kanban
@@ -12,27 +19,64 @@ spec:
       labels:
         app: collab-kanban
     spec:
+      terminationGracePeriodSeconds: 30
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+        seccompProfile:
+          type: RuntimeDefault
       containers:
-      - name: collab-kanban
-        image: collab-kanban:latest
-        ports:
-        - containerPort: 3002
-        resources:
-          requests:
-            cpu: "100m"
-            memory: "128Mi"
-          limits:
-            cpu: "250m"
-            memory: "256Mi"
-        readinessProbe:
-          httpGet:
-            path: /api/snapshot
-            port: 3002
-          initialDelaySeconds: 5
-          periodSeconds: 10
-        livenessProbe:
-          httpGet:
-            path: /api/snapshot
-            port: 3002
-          initialDelaySeconds: 15
-          periodSeconds: 20
+        - name: collab-kanban
+          image: collab-kanban:latest # replace with your registry image
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: http
+              containerPort: 3002
+          env:
+            - name: NODE_ENV
+              value: production
+            - name: DATA_DIR
+              value: /data
+            - name: TRUST_PROXY
+              value: '1'
+            - name: BOARD_CREATION_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: collab-kanban
+                  key: board-creation-token
+                  optional: true
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              memory: 256Mi
+          readinessProbe:
+            httpGet:
+              path: /readyz
+              port: http
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+            initialDelaySeconds: 10
+            periodSeconds: 20
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ['ALL']
+          volumeMounts:
+            - name: data
+              mountPath: /data
+            - name: tmp
+              mountPath: /tmp
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: collab-kanban-data
+        - name: tmp
+          emptyDir: {}
